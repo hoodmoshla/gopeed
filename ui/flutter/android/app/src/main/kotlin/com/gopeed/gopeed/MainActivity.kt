@@ -1,14 +1,22 @@
 package com.gopeed.gopeed
 
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.os.Bundle
 import com.gopeed.libgopeed.Libgopeed
 import com.gopeed.libgopeed.InvokeResultListener
 import com.gopeed.libgopeed.TaskEventListener
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterActivityLaunchConfigs
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMethodCodec
 
 class MainActivity : FlutterActivity() {
+    override fun getBackgroundMode(): FlutterActivityLaunchConfigs.BackgroundMode {
+        return FlutterActivityLaunchConfigs.BackgroundMode.transparent
+    }
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -82,9 +90,25 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        val appChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, APP_CHANNEL)
+        appChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "moveTaskToBack" -> {
+                    val moved = moveTaskToBack(true)
+                    result.success(moved)
+                }
+                "finish" -> {
+                    finish()
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     private companion object {
         const val LIBGOPEED_CHANNEL = "gopeed.com/libgopeed"
+        const val APP_CHANNEL = "gopeed.com/app"
     }
 }

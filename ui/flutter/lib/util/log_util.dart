@@ -4,11 +4,16 @@ import 'package:logger/logger.dart';
 import 'package:path/path.dart' as path;
 import 'util.dart';
 
-late final Logger logger;
+Logger? _logger;
+Logger get logger => _logger ??= Logger(
+      filter: ProductionFilter(),
+      printer: SimplePrinter(printTime: true, colors: false),
+      output: _buildOutput(),
+    );
+set logger(Logger newLogger) => _logger = newLogger;
 
 void initLogger() {
-  // if is debug mode, don't log to file
-  logger = Logger(
+  _logger = Logger(
     filter: ProductionFilter(),
     printer: SimplePrinter(printTime: true, colors: false),
     output: _buildOutput(),

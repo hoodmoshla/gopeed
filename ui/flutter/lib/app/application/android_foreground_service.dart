@@ -8,13 +8,33 @@ import '../../l10n/l10n.dart';
 class AndroidForegroundService {
   const AndroidForegroundService._();
 
-  static Future<void> ensureRunning(AppLocalizations l10n) async {
+  static Future<void> _taskQueue = Future<void>.value();
+
+  static Future<void> _enqueue(Future<void> Function() action) {
+    final next = _taskQueue.then((_) => action(), onError: (_, _) => action());
+    _taskQueue = next;
+    return next;
+  }
+
+  static Future<void> ensureRunning([AppLocalizations? l10n]) => start(l10n);
+
+  static Future<void> start([AppLocalizations? l10n]) => _enqueue(() => _start(l10n));
+
+  static Future<void> stop() => _enqueue(_stop);
+
+  static Future<bool> isRunning() async {
+    if (!Platform.isAndroid) return false;
+    return FlutterForegroundTask.isRunningService;
+  }
+
+  static Future<void> _start([AppLocalizations? l10n]) async {
     if (!Platform.isAndroid) return;
+    final localizations = l10n ?? appLocalizationsFor('');
 
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'gopeed_service',
-        channelName: l10n.androidForegroundServiceChannel,
+        channelName: localizations.androidForegroundServiceChannel,
         channelImportance: NotificationChannelImportance.LOW,
         showWhen: true,
         priority: NotificationPriority.LOW,
@@ -22,7 +42,7 @@ class AndroidForegroundService {
       iosNotificationOptions: const IOSNotificationOptions(showNotification: false, playSound: false),
       foregroundTaskOptions: ForegroundTaskOptions(
         eventAction: ForegroundTaskEventAction.nothing(),
-        autoRunOnBoot: true,
+        autoRunOnBoot: false,
         allowWakeLock: true,
         allowWifiLock: true,
       ),
@@ -42,10 +62,17 @@ class AndroidForegroundService {
 
     _throwOnFailure(
       await FlutterForegroundTask.startService(
-        notificationTitle: l10n.androidForegroundNotificationTitle,
-        notificationText: l10n.androidForegroundNotificationText,
+        notificationTitle: localizations.androidForegroundNotificationTitle,
+        notificationText: localizations.androidForegroundNotificationText,
       ),
     );
+  }
+
+  static Future<void> _stop() async {
+    if (!Platform.isAndroid) return;
+    if (await FlutterForegroundTask.isRunningService) {
+      _throwOnFailure(await FlutterForegroundTask.stopService());
+    }
   }
 
   static void _throwOnFailure(ServiceRequestResult result) {

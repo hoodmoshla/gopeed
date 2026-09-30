@@ -13,6 +13,7 @@ import '../../api/model/install_extension.dart';
 import '../../api/model/request.dart';
 import '../../core/entry/app_startup_options.dart';
 import '../../core/utils/content_uri_resolver.dart';
+import '../../core/utils/url_extractor.dart';
 import '../../core/window/app_window_launcher.dart';
 import '../../features/extensions/application/pending_extension_install.dart';
 import '../../features/tasks/application/pending_create_task.dart';
@@ -79,6 +80,13 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
   Future<void> _handleSharedMedia(SharedMedia media, {bool ignoreContentUri = false}) async {
     final uri = sharedMediaUri(media);
     if (uri == null || (ignoreContentUri && uri.scheme == 'content')) return;
+    if (Util.isAndroid() && (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'magnet')) {
+      final context = AppRouter.rootNavigatorKey.currentContext;
+      if (context != null && context.mounted) {
+        context.go('/share-popup?url=${Uri.encodeComponent(uri.toString())}');
+        return;
+      }
+    }
     await _handleUri(uri);
   }
 
@@ -178,6 +186,10 @@ Uri? sharedMediaUri(SharedMedia media) {
 
   final content = media.content?.trim();
   if (content == null || content.isEmpty) return null;
+  final extracted = UrlExtractor.extractPrimaryUrl(content);
+  if (extracted != null && extracted.isNotEmpty) {
+    return Uri.tryParse(extracted);
+  }
   return Uri.tryParse(content);
 }
 

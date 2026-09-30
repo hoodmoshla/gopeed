@@ -10,6 +10,7 @@ import '../../application/app_deep_link_controller.dart';
 import '../../application/app_notification_controller.dart';
 import '../../application/app_runtime_controller.dart';
 import '../../application/app_platform_controller.dart';
+import '../../application/background_service_controller.dart';
 import '../../../features/settings/presentation/widgets/app_update_dialog.dart';
 import '../../../features/tasks/application/pending_create_task.dart';
 import '../../../features/tasks/application/pending_update_task.dart';
@@ -64,6 +65,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       ref.watch(appPlatformControllerProvider);
       ref.watch(appDeepLinkControllerProvider);
       ref.watch(appNotificationControllerProvider);
+      ref.watch(backgroundServiceControllerProvider);
     }
     // Keep the nested Navigator mounted even while the runtime is starting.
     return widget.child;

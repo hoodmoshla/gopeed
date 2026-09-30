@@ -12,6 +12,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/tasks/presentation/pages/create_task_window_page.dart';
+import '../../features/tasks/presentation/pages/share_popup_page.dart';
 import '../../features/tasks/domain/task_record.dart';
 import '../../features/tasks/presentation/pages/task_details_page.dart';
 import '../../features/tasks/presentation/pages/task_files_page.dart';
@@ -76,6 +77,23 @@ class AppRouter {
       },
       routes: [
         GoRoute(path: '/login', parentNavigatorKey: rootNavigatorKey, builder: (context, state) => const LoginPage()),
+        GoRoute(
+          path: '/share-popup',
+          parentNavigatorKey: rootNavigatorKey,
+          pageBuilder: (context, state) {
+            final url = state.uri.queryParameters['url'] ?? '';
+            final title = state.uri.queryParameters['title'];
+            return CustomTransitionPage(
+              key: state.pageKey,
+              opaque: false,
+              barrierColor: const Color(0x00000000),
+              child: SharePopupPage(initialUrl: url, initialTitle: title),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            );
+          },
+        ),
         ShellRoute(
           builder: (context, state, child) => MobileExitGuard(child: MainShell(child: child)),
           routes: [

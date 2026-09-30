@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -141,7 +142,7 @@ void main() {
 
     final target = await notifier.resolveTaskTarget('single');
 
-    expect(target?.path, '/downloads/archive.zip');
+    expect(target?.path, path.join('/downloads', 'archive.zip'));
     expect(target?.canOpenFile, isTrue);
   });
 
@@ -151,7 +152,7 @@ void main() {
 
     final target = await notifier.resolveTaskTarget('folder');
 
-    expect(target?.path, '/downloads/torrent-bundle');
+    expect(target?.path, path.join('/downloads', 'torrent-bundle'));
     expect(target?.canOpenFile, isFalse);
   });
 
@@ -164,7 +165,7 @@ void main() {
     expect(notifications, hasLength(1));
     final platformSpecifics = notifications[0]['platformSpecifics'] as Map<dynamic, dynamic>;
     expect(platformSpecifics['categoryIdentifier'], 'taskDoneSingleFile');
-    expect(notifications[0]['payload'], '{"path":"/downloads/archive.zip"}');
+    expect(notifications[0]['payload'], jsonEncode({'path': path.join('/downloads', 'archive.zip')}));
   });
 
   test('a done folder task notification selects the folder category', () async {
@@ -211,7 +212,7 @@ void main() {
       NotificationResponse(
         notificationResponseType: NotificationResponseType.selectedNotificationAction,
         actionId: 'open_folder',
-        payload: '{"path":"$existingPath"}',
+        payload: jsonEncode({'path': existingPath}),
       ),
     );
     expect(notifier.revealedFolders, [existingPath]);
@@ -228,9 +229,7 @@ void main() {
       await notifier.handleNotificationResponse(
         NotificationResponse(
           notificationResponseType: NotificationResponseType.selectedNotificationAction,
-          actionId: windows
-              ? NotificationActionSpec(id: 'open_folder', path: directory.path).encode()
-              : 'open_folder',
+          actionId: windows ? NotificationActionSpec(id: 'open_folder', path: directory.path).encode() : 'open_folder',
           payload: windows ? null : jsonEncode({'path': directory.path}),
         ),
       );
@@ -300,10 +299,7 @@ class _TestNotificationController extends AppNotificationController {
   @override
   final Stream<TaskEvent> taskEvents;
 
-  final tasksById = {
-    'single': _task('single', folder: false),
-    'folder': _task('folder', folder: true),
-  };
+  final tasksById = {'single': _task('single', folder: false), 'folder': _task('folder', folder: true)};
   final openedFiles = <String>[];
   final revealedFolders = <String>[];
   var frontedWindow = false;

@@ -9,7 +9,6 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart' as api;
-import '../api/gopeed_site_api.dart';
 import '../api/model/downloader_config.dart';
 import 'arch/arch.dart';
 import 'github_mirror.dart';
@@ -47,7 +46,7 @@ UpdateChannel? get updateChannel {
 String get _updaterBinaryName => 'updater${Util.isWindows() ? '.exe' : ''}';
 
 const _releasePageSize = 10;
-const _githubReleasesUrl = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=$_releasePageSize';
+const _githubReleasesUrl = 'https://api.github.com/repos/hoodmoshla/gopeed/releases?per_page=$_releasePageSize';
 
 class VersionInfo {
   const VersionInfo({required this.version, required this.changeLog, required this.releaseUrl});
@@ -84,7 +83,7 @@ Future<VersionInfo?> checkUpdate() async {
     }
     releases = releaseData;
   } catch (_) {
-    releases = await GopeedSiteApi.instance.getReleases(perPage: _releasePageSize);
+    releases = const [];
   }
   return selectUpdateRelease(releases, appVersion);
 }
@@ -145,7 +144,8 @@ VersionInfo? selectUpdateRelease(List<dynamic> releases, String currentVersionTe
   return VersionInfo(
     version: _versionText(tagName),
     changeLog: (selectedRelease['body'] ?? '').toString(),
-    releaseUrl: (selectedRelease['html_url'] ?? 'https://github.com/GopeedLab/gopeed/releases/tag/$tagName').toString(),
+    releaseUrl: (selectedRelease['html_url'] ?? 'https://github.com/hoodmoshla/gopeed/releases/tag/$tagName')
+        .toString(),
   );
 }
 
@@ -177,20 +177,27 @@ Future<void> updateApp(
   VersionInfo versionInfo, {
   required ExtraConfigGithubMirror githubMirror,
   required UpdateProgressCallback onProgress,
+  UpdateChannel? targetChannel,
+  Future<void> Function(String filePath)? apkInstaller,
+  Dio? dioClient,
+  String? tempDirectoryPath,
 }) async {
-  final channel = updateChannel;
+  final channel = targetChannel ?? updateChannel;
   final assetName = updateAssetName(versionInfo.version, channel: channel);
   var assetPath = '';
 
   if (assetName.isNotEmpty) {
-    final rawUrl = 'https://github.com/GopeedLab/gopeed/releases/download/v${versionInfo.version}/$assetName';
-    assetPath = path.join((await getTemporaryDirectory()).path, assetName);
+    final rawUrl = 'https://github.com/hoodmoshla/gopeed/releases/download/v${versionInfo.version}/$assetName';
+    final tempPath = tempDirectoryPath ?? (await getTemporaryDirectory()).path;
+    assetPath = path.join(tempPath, assetName);
     final downloadUrl = await githubAutoMirror(rawUrl, MirrorType.githubRelease, config: githubMirror);
-    final client = Dio();
+    final client = dioClient ?? Dio();
     try {
       await client.download(downloadUrl, assetPath, onReceiveProgress: onProgress);
     } finally {
-      client.close();
+      if (dioClient == null) {
+        client.close();
+      }
     }
   }
 
@@ -219,7 +226,11 @@ Future<void> updateApp(
         path.join(logsDir(), 'updater.log'),
       ]);
     case UpdateChannel.androidApk:
-      await InstallPlugin.installApk(assetPath);
+      if (apkInstaller != null) {
+        await apkInstaller(assetPath);
+      } else {
+        await InstallPlugin.installApk(assetPath);
+      }
     case UpdateChannel.linuxAppImage:
     case UpdateChannel.linuxRpm:
     case UpdateChannel.iosIpa:

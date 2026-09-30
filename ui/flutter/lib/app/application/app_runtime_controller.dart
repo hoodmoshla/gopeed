@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as path;
@@ -21,7 +22,6 @@ import '../../util/analytics.dart';
 import '../../util/package_info.dart';
 import '../../util/util.dart';
 import '../rpc/webview_rpc_service.dart';
-import 'android_foreground_service.dart';
 import 'location_keep_alive.dart';
 import 'continued_processing.dart';
 
@@ -106,13 +106,8 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       ),
     );
     unawaited(LocationKeepAliveCoordinator.instance.reconcile(enabled: config.extra.backgroundLocationKeepAlive));
-    unawaited(
-      ContinuedProcessing.setEnabled(
-        config.extra.backgroundContinuedProcessing,
-      ),
-    );
+    unawaited(ContinuedProcessing.setEnabled(config.extra.backgroundContinuedProcessing));
   }
-
 
   Future<AppRuntimeState> _init() async {
     await AppInitializer.ensureStorageInitialized();
@@ -176,7 +171,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
         ..apiToken = config.api.token;
     }
     unawaited(_initTrackerUpdate(config));
-    unawaited(_initAndroidForegroundService(appLocalizationsFor(config.extra.locale)));
+    // Foreground service lifecycle is managed on demand by BackgroundServiceController.
     await _initAnalytics(config);
 
     final result = AppRuntimeState(
@@ -190,9 +185,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       // Make sure the native Continued Processing manager has the
       // persisted setting before app initialization completes. This
       // avoids the first download racing ahead of setEnabled(true).
-      await ContinuedProcessing.setEnabled(
-        config.extra.backgroundContinuedProcessing,
-      );
+      await ContinuedProcessing.setEnabled(config.extra.backgroundContinuedProcessing);
 
       LocationKeepAliveCoordinator.instance.start(
         () =>
@@ -202,13 +195,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     return result;
   }
 
-  Future<void> _initAndroidForegroundService(AppLocalizations l10n) async {
-    try {
-      await AndroidForegroundService.ensureRunning(l10n);
-    } catch (error, stackTrace) {
-      logger.w('Android foreground service initialization failed', error, stackTrace);
-    }
-  }
+  AppLocalizations get currentLocalizations => appLocalizationsFor(state.value?.downloaderConfig.extra.locale ?? '');
 
   Future<StartConfig> _loadStartConfig() async {
     final defaultCfg = await _initDefaultStartConfig();
